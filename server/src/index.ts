@@ -1,4 +1,7 @@
+import fs from "node:fs";
 import http from "node:http";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import express from "express";
 import { WebSocketServer } from "ws";
 import { SessionStore } from "./sessions.js";
@@ -29,6 +32,17 @@ app.get("/api/sessions/:id", (req, res) => {
   }
   res.json({ id: session.id, createdAt: session.createdAt });
 });
+
+// In production the built client is served by this same server, so the app is one deployable unit.
+const clientDist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../client/dist");
+if (fs.existsSync(clientDist)) {
+  app.use(express.static(clientDist));
+  // SPA fallback: /s/:id and other client routes get index.html.
+  app.use((req, res, next) => {
+    if (req.method !== "GET" || req.path.startsWith("/api/")) return next();
+    res.sendFile(path.join(clientDist, "index.html"));
+  });
+}
 
 // Express and WebSocket share one HTTP server (one port).
 const server = http.createServer(app);
