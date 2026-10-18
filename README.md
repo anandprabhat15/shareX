@@ -30,14 +30,15 @@ It is built from scratch on plain WebSockets, without a collaboration framework.
 
 ## Features
 
-- **One-click sessions**: a new session gets a random 10-character ID and a shareable URL (`/s/<id>`).
+- **Short 4-digit codes**: a new session gets a code like `4580` and a link (`/4580`). Anyone can join by typing the code on the home page.
 - **Live sync**: text typed in one tab appears in every other tab of the same session within about 100 ms.
 - **Late joiners catch up**: anyone who opens the link receives the current document immediately.
 - **Monaco editor**: the editor from VS Code, with syntax highlighting for 10 languages and a language switcher.
 - **Connection status**: a live badge shows connecting / connected / reconnecting, and the client reconnects on its own.
 - **Isolated rooms**: each session is its own room, and updates never leak between sessions.
 - **Cursor-friendly updates**: remote changes keep your cursor where it was instead of throwing it to the top.
-- **Defensive server**: unknown sessions are rejected at the WebSocket handshake, malformed messages are ignored, and document size is capped.
+- **Built-in limits**: capped sessions, people per session and document size, rate limiting on creating and joining, and idle sessions expire automatically.
+- **Clear errors**: a full session or an oversized paste shows a message instead of failing silently.
 
 ## Architecture
 
@@ -88,13 +89,14 @@ sequenceDiagram
 | Server → client, on connect | `{ "type": "init", "text": "..." }` |
 | Client → server | `{ "type": "update", "text": "..." }` |
 | Server → other clients in the room | `{ "type": "update", "text": "..." }` |
+| Server → client, on a problem | `{ "type": "error", "code": "too-large" \| "room-full", "max": n }`; a full room is then closed with code `4001` |
 
 ### REST API
 
 | Method | Path | Response |
 |---|---|---|
-| `POST` | `/api/sessions` | `201` `{ "id": "..." }` |
-| `GET` | `/api/sessions/:id` | `200` `{ "id", "createdAt" }`, or `404` |
+| `POST` | `/api/sessions` | `201` `{ "id": "4580" }`, `429` when rate limited, `503` when the server is full |
+| `GET` | `/api/sessions/:id` | `200` `{ "id", "createdAt" }`, `404`, or `429` when rate limited |
 | `GET` | `/api/health` | `200` `{ "ok": true }` |
 
 ## Tech stack
@@ -104,7 +106,7 @@ sequenceDiagram
 | Language | TypeScript (strict) | Catches message-shape and null bugs at compile time |
 | Server | Node.js, Express | Small REST surface, easy to reason about |
 | Realtime | `ws` | Plain WebSockets, no hidden abstraction over rooms or reconnects |
-| IDs | `nanoid(10)` | Unguessable URLs, so the link itself is the access key |
+| IDs | `crypto.randomInt` | Short 4-digit codes that are easy to say out loud, protected by limits and expiry |
 | Client | React, Vite, React Router | Fast dev loop, simple routing between home and session |
 | Editor | Monaco (`@monaco-editor/react`) | The VS Code editor component |
 | Repo | npm workspaces | One install and one repo for `server` and `client` |
@@ -134,6 +136,12 @@ In development, Vite proxies `/api` and `/ws` to the server, so the browser only
 | Variable | Where | Default | Purpose |
 |---|---|---|---|
 | `PORT` | server | `3001` | Port the server listens on |
+| `MAX_SESSIONS` | server | `5000` | Live sessions allowed at once |
+| `SESSION_IDLE_MINUTES` | server | `30` | Idle time after which an empty session expires |
+| `MAX_CLIENTS_PER_ROOM` | server | `20` | People allowed in one session |
+| `CREATE_LIMIT_PER_MIN` | server | `10` | Sessions one client can create per minute |
+| `LOOKUP_LIMIT_PER_MIN` | server | `30` | Joins and lookups one client can make per minute |
+| `MISS_LIMIT_PER_MIN` | server | `300` | Failed lookups allowed across all clients per minute (slows code guessing) |
 | `API_TARGET` | client (dev) | `http://localhost:3001` | Where the Vite dev proxy forwards `/api` and `/ws` |
 | `VITE_WS_URL` | client (build) | same origin | WebSocket base URL when the server is hosted separately, e.g. `wss://api.example.com` |
 
@@ -162,7 +170,9 @@ shareX/
 ├── server/
 │   └── src/
 │       ├── index.ts        # Express routes, static client, HTTP server, WebSocket upgrade and messages
-│       ├── sessions.ts     # SessionStore: in-memory sessions
+│       ├── config.ts       # Limits, read from environment variables
+│       ├── rateLimit.ts    # RateLimiter and client IP detection
+│       ├── sessions.ts     # SessionStore: 4-digit codes, capacity, idle expiry
 │       └── rooms.ts        # RoomManager: join, leave, broadcast
 ├── client/
 │   └── src/
@@ -178,7 +188,8 @@ shareX/
 - **Sessions and rooms are separate classes.** `SessionStore` owns the data and `RoomManager` owns live connections. Replacing the in-memory `Map` with Redis or a database only touches one of them.
 - **Debounced full-text updates.** Each message carries the whole document, which keeps the protocol and the code small. A 100 ms debounce collapses a burst of keystrokes into one message.
 - **No echo loop.** When a remote update is written into the editor, a flag stops Monaco's change event from sending it straight back to the server.
-- **Random URL as the access key.** There are no accounts. Anyone with the link can join, which matches how tools like this are used.
+- **Short public codes, protected by limits.** There are only 10,000 four-digit codes, so they can be guessed. The server makes that slow and noisy instead of pretending it is impossible: per-client and global rate limits on lookups, a cap on live sessions and idle expiry that frees codes quickly.
+- **Errors over silent drops.** The server tells the client when an update is too large or a room is full, so the UI can explain it.
 - **One port for REST and WebSocket.** Simpler to deploy and to proxy, and it fits platforms that expose a single port.
 
 ## Known limitations
@@ -188,7 +199,8 @@ These are deliberate trade-offs of the current version, not bugs.
 - **Simultaneous typing is last-write-wins.** Because each update replaces the whole text, if two people type at the same instant, the update that reaches the server last wins and the other person's keystrokes in that window can be lost. Fixing this properly needs a CRDT or operational transform (see the roadmap).
 - **The language selector is local.** Each user picks their own syntax highlighting; it is not synced between participants.
 - **Sessions live in memory.** Restarting the server clears all sessions.
-- **No access control yet.** Anyone with a session link can read and edit it, so do not paste secrets.
+- **Codes are public.** Anyone who guesses or is given a code can read and edit the session, so do not paste secrets. Password-protected private sessions are on the roadmap.
+- **Rate limits assume one server.** Counters live in memory and the client IP is read from `X-Forwarded-For`, which is good enough for a demo but not for a multi-instance deployment.
 - **No automated tests yet.**
 
 ## Roadmap
@@ -196,9 +208,9 @@ These are deliberate trade-offs of the current version, not bugs.
 - [x] Session creation and REST API
 - [x] WebSocket rooms with live sync
 - [x] Monaco client with language switcher and reconnect
-- [ ] Private sessions protected by a password (bcrypt hash, short-lived join token)
-- [ ] Limits and cleanup: max sessions, max users per room, rate limiting, expiry of idle sessions
-- [ ] Shareable secret code for invite-only access
+- [ ] Private sessions protected by a password and a long unguessable ID (bcrypt hash, short-lived join token)
+- [x] Short 4-digit session codes with a join-by-code box
+- [x] Limits and cleanup: max sessions, max users per room, rate limiting, expiry of idle sessions
 - [x] Hosted demo on Render (single free web service)
 - [ ] CRDT-based sync with [Yjs](https://yjs.dev) to merge concurrent edits and add remote cursors
 - [ ] Persistence (Redis or a database) and automated tests
