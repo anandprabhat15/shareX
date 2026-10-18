@@ -39,7 +39,7 @@ export default function SessionPage() {
   return (
     <div className="session">
       <header>
-        <Link to="/" className="brand">CodeShare</Link>
+        <Link to="/" className="brand">shareX</Link>
         <span className="session-id">{id}</span>
         <span className={`status ${connection}`}>{connection}</span>
         <select value={language} onChange={(e) => setLanguage(e.target.value)}>

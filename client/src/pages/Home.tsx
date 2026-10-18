@@ -22,7 +22,7 @@ export default function Home() {
 
   return (
     <main className="home">
-      <h1>CodeShare</h1>
+      <h1>shareX</h1>
       <p>Create a session and share the link.</p>
       <button onClick={createSession} disabled={loading}>
         {loading ? "Creating..." : "New session"}

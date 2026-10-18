@@ -69,5 +69,5 @@ wss.on("connection", (ws, sessionId: string) => {
 
 const PORT = Number(process.env.PORT) || 3001;
 server.listen(PORT, () => {
-  console.log(`CodeShare server running on http://localhost:${PORT}`);
+  console.log(`shareX server running on http://localhost:${PORT}`);
 });
