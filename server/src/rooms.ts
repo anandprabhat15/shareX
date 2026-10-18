@@ -19,6 +19,10 @@ export class RoomManager {
     if (room.size === 0) this.rooms.delete(sessionId);
   }
 
+  count(sessionId: string): number {
+    return this.rooms.get(sessionId)?.size ?? 0;
+  }
+
   // Send to everyone in the room except the sender.
   broadcast(sessionId: string, sender: WebSocket, data: string): void {
     for (const client of this.rooms.get(sessionId) ?? []) {
