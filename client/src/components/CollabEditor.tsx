@@ -1,12 +1,13 @@
 import { useEffect, useRef } from "react";
 import Editor, { type OnMount } from "@monaco-editor/react";
 
-export type ConnectionStatus = "connecting" | "connected" | "reconnecting";
+export type ConnectionStatus = "connecting" | "connected" | "reconnecting" | "full";
 
 interface Props {
   sessionId: string;
   language: string;
   onStatusChange: (status: ConnectionStatus) => void;
+  onNotice: (message: string) => void;
 }
 
 type EditorInstance = Parameters<OnMount>[0];
@@ -22,7 +23,7 @@ function wsUrl(sessionId: string): string {
   return `${base}/ws/${sessionId}`;
 }
 
-export default function CollabEditor({ sessionId, language, onStatusChange }: Props) {
+export default function CollabEditor({ sessionId, language, onStatusChange, onNotice }: Props) {
   const editorRef = useRef<EditorInstance | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const pendingTextRef = useRef<string | null>(null); // text that arrived before the editor mounted
@@ -45,6 +46,7 @@ export default function CollabEditor({ sessionId, language, onStatusChange }: Pr
 
   useEffect(() => {
     let disposed = false;
+    let roomFull = false; // the server closes full rooms on purpose, so do not reconnect
     let reconnectTimer: number | undefined;
 
     function connect(isRetry: boolean) {
@@ -58,13 +60,18 @@ export default function CollabEditor({ sessionId, language, onStatusChange }: Pr
           const msg = JSON.parse(event.data as string);
           if ((msg.type === "init" || msg.type === "update") && typeof msg.text === "string") {
             applyRemoteText(msg.text);
+          } else if (msg.type === "error" && msg.code === "too-large") {
+            onNotice(`Document too large (max ${Number(msg.max).toLocaleString()} characters). Your last change was not shared.`);
+          } else if (msg.type === "error" && msg.code === "room-full") {
+            roomFull = true;
+            onStatusChange("full");
           }
         } catch {
           // ignore malformed messages
         }
       };
       ws.onclose = () => {
-        if (disposed) return;
+        if (disposed || roomFull) return;
         onStatusChange("reconnecting");
         reconnectTimer = window.setTimeout(() => connect(true), RECONNECT_DELAY_MS);
       };

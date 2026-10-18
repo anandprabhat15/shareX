@@ -9,7 +9,12 @@ a { color: #6cb6ff; }
 .session { display: flex; flex-direction: column; height: 100%; }
 .session header { display: flex; align-items: center; gap: 12px; padding: 8px 16px; background: #252526; border-bottom: 1px solid #333; }
 .brand { font-weight: 600; text-decoration: none; color: #ddd; }
-.session-id { font-family: monospace; color: #888; }
+.session-code { font-family: monospace; font-size: 18px; letter-spacing: 2px; color: #ddd; }
 .status { margin-right: auto; font-size: 12px; padding: 2px 8px; border-radius: 10px; background: #333; }
 .status.connected { color: #3fb950; }
 .status.connecting, .status.reconnecting { color: #d29922; }
+.or { color: #888; margin: 8px 0 0; }
+.hint { color: #888; font-size: 13px; margin-top: 16px; }
+.join { display: flex; gap: 8px; }
+input { font: inherit; padding: 6px 12px; width: 110px; text-align: center; letter-spacing: 4px; border-radius: 6px; border: 1px solid #555; background: #2d2d2d; color: #ddd; }
+.notice { padding: 8px 16px; background: #5a3b00; color: #ffd98a; font-size: 14px; }
