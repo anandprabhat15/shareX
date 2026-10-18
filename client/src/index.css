@@ -1,0 +1,15 @@
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body { font-family: system-ui, sans-serif; background: #1e1e1e; color: #ddd; }
+button, select { font: inherit; padding: 6px 12px; border-radius: 6px; border: 1px solid #555; background: #2d2d2d; color: #ddd; cursor: pointer; }
+button:disabled { opacity: 0.6; cursor: default; }
+a { color: #6cb6ff; }
+.home { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; height: 100%; }
+.error { color: #ff7b72; }
+.session { display: flex; flex-direction: column; height: 100%; }
+.session header { display: flex; align-items: center; gap: 12px; padding: 8px 16px; background: #252526; border-bottom: 1px solid #333; }
+.brand { font-weight: 600; text-decoration: none; color: #ddd; }
+.session-id { font-family: monospace; color: #888; }
+.status { margin-right: auto; font-size: 12px; padding: 2px 8px; border-radius: 10px; background: #333; }
+.status.connected { color: #3fb950; }
+.status.connecting, .status.reconnecting { color: #d29922; }
