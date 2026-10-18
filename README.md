@@ -4,6 +4,10 @@
 
 **A real-time collaborative code editor. Create a session, share the link, and type together.**
 
+### [Live demo: sharex-9ai5.onrender.com](https://sharex-9ai5.onrender.com)
+
+<sub>Hosted on Render's free plan. After a period of inactivity the first load can take up to a minute while the server wakes up.</sub>
+
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white)
 ![Node.js](https://img.shields.io/badge/Node.js-22-5fa04e?logo=nodedotjs&logoColor=white)
 ![Express](https://img.shields.io/badge/Express-REST-000000?logo=express&logoColor=white)
@@ -149,7 +153,7 @@ The repository includes a [Render](https://render.com) blueprint ([`render.yaml`
 1. In Render choose **New → Blueprint** and select this repository.
 2. Render runs `npm ci --include=dev && npm run build`, starts the app with `npm start` and health-checks `/api/health`.
 
-On Render's free plan the service sleeps after about 15 minutes without traffic, so the first request after a pause can take 30 to 60 seconds. Sessions are kept in memory, so they are cleared whenever the service restarts or sleeps.
+The live demo runs this way. On Render's free plan the service sleeps after about 15 minutes without traffic, so the first request after a pause can take 30 to 60 seconds. Sessions are kept in memory, so they are cleared whenever the service restarts or sleeps.
 
 ## Project structure
 
@@ -195,7 +199,7 @@ These are deliberate trade-offs of the current version, not bugs.
 - [ ] Private sessions protected by a password (bcrypt hash, short-lived join token)
 - [ ] Limits and cleanup: max sessions, max users per room, rate limiting, expiry of idle sessions
 - [ ] Shareable secret code for invite-only access
-- [ ] Hosted demo (server on Render, client on Vercel or Netlify)
+- [x] Hosted demo on Render (single free web service)
 - [ ] CRDT-based sync with [Yjs](https://yjs.dev) to merge concurrent edits and add remote cursors
 - [ ] Persistence (Redis or a database) and automated tests
 
