@@ -136,9 +136,20 @@ In development, Vite proxies `/api` and `/ws` to the server, so the browser only
 ### Production build
 
 ```bash
-npm run build -w server && npm run start -w server   # compiled server
-npm run build -w client                              # static files in client/dist
+npm run build   # builds the client (client/dist) and compiles the server (server/dist)
+npm start       # serves the API, WebSocket and the built client from one port
 ```
+
+In production the server also serves the built client, so the whole app is one process on one origin. No CORS setup and no `VITE_WS_URL` is needed.
+
+### Deploy
+
+The repository includes a [Render](https://render.com) blueprint ([`render.yaml`](render.yaml)) for a single free web service:
+
+1. In Render choose **New → Blueprint** and select this repository.
+2. Render runs `npm ci --include=dev && npm run build`, starts the app with `npm start` and health-checks `/api/health`.
+
+On Render's free plan the service sleeps after about 15 minutes without traffic, so the first request after a pause can take 30 to 60 seconds. Sessions are kept in memory, so they are cleared whenever the service restarts or sleeps.
 
 ## Project structure
 
@@ -146,7 +157,7 @@ npm run build -w client                              # static files in client/di
 shareX/
 ├── server/
 │   └── src/
-│       ├── index.ts        # Express routes, HTTP server, WebSocket upgrade and message handling
+│       ├── index.ts        # Express routes, static client, HTTP server, WebSocket upgrade and messages
 │       ├── sessions.ts     # SessionStore: in-memory sessions
 │       └── rooms.ts        # RoomManager: join, leave, broadcast
 ├── client/
@@ -154,6 +165,7 @@ shareX/
 │       ├── pages/          # Home (create session) and SessionPage (editor shell)
 │       └── components/
 │           └── CollabEditor.tsx   # Monaco + WebSocket sync, debounce, reconnect
+├── render.yaml             # Render blueprint (single web service)
 └── docs/screenshot.jpg
 ```
 
