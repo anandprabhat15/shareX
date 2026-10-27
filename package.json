@@ -9,6 +9,7 @@
     "dev:server": "npm run dev -w server",
     "dev:client": "npm run dev -w client",
     "build": "npm run build -w client && npm run build -w server",
-    "start": "npm run start -w server"
+    "start": "npm run start -w server",
+    "test:e2e": "node scripts/e2e-test.mjs"
   }
 }

@@ -154,6 +154,21 @@ npm start       # serves the API, WebSocket and the built client from one port
 
 In production the server also serves the built client, so the whole app is one process on one origin. No CORS setup and no `VITE_WS_URL` is needed.
 
+### Testing
+
+```bash
+npm run test:e2e
+```
+
+End-to-end tests in [`scripts/e2e-test.mjs`](scripts/e2e-test.mjs) run against the real server over HTTP and WebSocket. They cover:
+
+- **REST**: health check, creating sessions with 4-digit codes, and lookups for valid and unknown codes.
+- **Live sync**: initial text, broadcast without echo to the sender, late joiners, room isolation, rejected unknown sessions and malformed messages.
+- **Every limit**: document size, room size (close code `4001`), create rate, lookup rate (including the WebSocket upgrade), the global wrong-code limit and the session cap.
+- **Idle expiry**: empty sessions expire, while sessions with someone connected stay.
+
+The script starts its own server on a free port with small limits (for example 3 people per room and a 3-second idle timeout), restarts it between test groups so rate limits don't interfere, and always stops it at the end. It uses only Node 22 built-ins and the project's own `tsx`, so there is nothing extra to install.
+
 ### Deploy
 
 The repository includes a [Render](https://render.com) blueprint ([`render.yaml`](render.yaml)) for a single free web service:
@@ -179,6 +194,8 @@ shareX/
 │       ├── pages/          # Home (create session) and SessionPage (editor shell)
 │       └── components/
 │           └── CollabEditor.tsx   # Monaco + WebSocket sync, debounce, reconnect
+├── scripts/
+│   └── e2e-test.mjs        # End-to-end tests: npm run test:e2e
 ├── render.yaml             # Render blueprint (single web service)
 └── docs/screenshot.jpg
 ```
@@ -201,7 +218,6 @@ These are deliberate trade-offs of the current version, not bugs.
 - **Sessions live in memory.** Restarting the server clears all sessions.
 - **Codes are public.** Anyone who guesses or is given a code can read and edit the session, so do not paste secrets. Password-protected private sessions are on the roadmap.
 - **Rate limits assume one server.** Counters live in memory and the client IP is read from `X-Forwarded-For`, which is good enough for a demo but not for a multi-instance deployment.
-- **No automated tests yet.**
 
 ## Roadmap
 
@@ -213,7 +229,8 @@ These are deliberate trade-offs of the current version, not bugs.
 - [x] Limits and cleanup: max sessions, max users per room, rate limiting, expiry of idle sessions
 - [x] Hosted demo on Render (single free web service)
 - [ ] CRDT-based sync with [Yjs](https://yjs.dev) to merge concurrent edits and add remote cursors
-- [ ] Persistence (Redis or a database) and automated tests
+- [x] End-to-end tests for sync, limits and expiry
+- [ ] Persistence (Redis or a database)
 
 ## Author
 
